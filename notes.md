@@ -21,3 +21,15 @@ open dir // for opening directory in Explorer.
 FURTHER FEATURES: semantic search, bwo of Barnyard. As this is a native app, in win32 c, the Barnyard skeleton stack would need to be invokable. If it is written in Node, FS would need to invoke Node as an inferior process, then receive the results back into the host process (fs.exe). Perhaps a batch approach (eg passing a reference to an entire directory to Node.Barnyard, for it to parse the entire folder of source files, and return a batch resultset. This would be slooowww in a deeply-nested folder structure).
 
 This suggests the user could provide filters for the utility to select which file types/target languages/etc it will search.
+
+
+NB:
+/*
+  CON, PRN, AUX, NUL 
+  COM1, COM2, COM3, COM4, COM5, COM6, COM7, COM8, COM9
+  LPT1, LPT2, LPT3, LPT4, LPT5, LPT6, LPT7, LPT8, LPT9
+  
+  The above strings are all reserved windows filenames, with or without
+  arbitrary extension e.g. CON.txt.
+*/
+

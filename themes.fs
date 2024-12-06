@@ -29,3 +29,6 @@ Red Dead:
 	SYMBOLS = NORMAL;
 	CAPITALISE = 0;
 	BLOCK_LETT = 1
+
+
+	

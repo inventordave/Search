@@ -6,22 +6,91 @@
 #include <stdio.h>
 #include <shellapi.h>
 #include <winnt.h>
-#include <string.h>
 
-#include "barnyard.h"
+#include "../stringy/stringy.h"
+#include "../colour/colour.h"
+#include "../gcollect/gc.h"
 
-#define _BYPASS_ANSIVT 0
-#include "ansivt2.h"
+#include "wernee/wregex.h"
+#include "wernee/wrx_prnt.h"
+
 #include "error.h"
-#include "str.h"
-#include "regex/wregex.h"
-#include "regex/wrx_prnt.h"
-
-#include "searchfile.h"
 #include "fs.h"
+
+static void init( void );
+static void finally( void );
 
 wregmatch_t* subm_g;
 wregex_t* r_g;
+
+// WS_FS_C
+
+#include <stdlib.h>
+#include <stdio.h>
+#include <math.h>
+#include "../stringy/stringy.h"
+#include "regex/wregex.h"
+
+static int _match( wregex_t *p, const char *s, const char *file, int line );
+#define match(p, s)   _match(p, s, __FILE__, __LINE__)
+#define regex( s,p ) match(p, s)
+
+static int e, ep;
+
+signed int searchfile( char* _, void* pattern, int type )	{
+	
+	wregex_t* p;
+	if( type==FS_FC_PATTERN )
+		p = (wregex_t*)pattern;
+	else	{
+		p = wrx_comp((char*)pattern, &e, &ep);	
+	}
+	
+	subm_g = (wregmatch_t*)malloc( sizeof(wregmatch_t) );
+	r_g    = (wregex_t*)   malloc( sizeof(wregex_t) );
+
+	// loadFile. Test againstthe werneyEngine.
+	int j = -1;
+	if( regex( _,p ) )
+		j = (int) (subm_g[0].end - _);
+	
+	return j;
+}
+
+static int _match( wregex_t *p, const char *s, const char *file, int line ) {
+
+	//wregex_t *r;
+	wregmatch_t *subm;
+
+	//r = wrx_comp(p, &e, &ep);
+	if(!p) {
+		fprintf(stderr, "\n[%s:%d] ERROR......: %s\n%s\n%*c\n", file, line, wrx_error(e), "NULL WREGEX_T* P", ep + 1, '^');
+		exit(EXIT_FAILURE);
+	}
+
+	if(p->n_subm > 0) {
+		subm = calloc(sizeof *subm, p->n_subm);
+		if(!subm) {
+			fprintf(stderr, "Error: out of memory (submatches)\n");
+			wrx_free(p);
+			exit(EXIT_FAILURE);
+		}
+	} else
+		subm = NULL;
+
+	e = wrx_exec(p, s, &subm, &p->n_subm);
+
+	if(e < 0) fprintf(stderr, "Error: %s\n", wrx_error(e));
+
+	*subm_g = *subm;
+	*r_g = *p;
+	
+	free(subm);
+	//wrx_free(p);
+
+	return e;
+}
+
 
 signed int getOptions(int * argc, char* argv[])	{
 
@@ -377,18 +446,19 @@ signed int getOptions(int * argc, char* argv[])	{
 int main(int argc, char*argv[], char**envp)	{
 	
 	init();
-	
-	StdHandle = GetStdHandle(STD_OUTPUT_HANDLE);
-	
-	color = SetConsoleMode(
-		StdHandle,
-		0x0001 | 0x0002 | ENABLE_VIRTUAL_TERMINAL_PROCESSING
-	);
 
 	while(getOptions(&argc, argv) == -1)
 	;
+	
+	if( FLAGS&COLOURMODE != COLOURMODE	)
+		ansivt = 0;
+	else
+		ansivt = 'C';
 
-	if( FLAGS&FILE_CONTENTS ){
+	if( ansivt )
+		color = colorMode();
+
+	if( FLAGS&FILE_CONTENTS )	{
 		
 		if( fc_type==FS_FC_STRING )	{
 			
@@ -398,14 +468,9 @@ int main(int argc, char*argv[], char**envp)	{
 			search_pattern = (void*) search_input;
 		
 		
-		// search_input might need to be changed to a wregex_t* regex. It should be assigned to void* search_pattern, and flag fc_type set to either FS_FC_PATTERN, or FS_FC_STRING. check .h file!
+		// search_input might need to be changed to a wregex_t* regex. It should be assigned to void* search_pattern, and
+		// flag fc_type set to either FS_FC_PATTERN, or FS_FC_STRING. check .h file!
 	}
-
-	//sprintf( msg_str, "ResponseCode(SetConsoleMode) := '%s'.\n", (color == 0 ? "FAIL" : "SUCCESS") );
-	//print( msg_str );
-	
-	if(color == 0)
-		Error( TEXT("WriteConsole()") );
 	
 	strcpy( defaultIgnoreList, ".git" ); /** ".git|.vscode|node_modules" */
 	strcpy( defaultWhiteList, "\0" ); /** "src|x64|test|node_modules|debug|release|htdocs" */
@@ -781,6 +846,7 @@ int main(int argc, char*argv[], char**envp)	{
 	return 0;
 }
 
+// CONSTRUCTION & DESTRUCTION
 void init(void)	{
 
 	fc_type = FS_FC_STRING;
@@ -812,7 +878,6 @@ void init(void)	{
 	msg_str[0] = '\0';
 
 }
-
 void finally(void)	{
 	
 	free( filename );
@@ -828,6 +893,7 @@ void finally(void)	{
 	if( FLAGS&OTF )
 		fclose( f );
 }
+
 
 // outputs found item to screen, and optionally, to an output file.
 void output( char* path, char* filename, int o )	{	
@@ -1185,7 +1251,6 @@ void search( char* path, char* ResultObj[], int* o, wregex_t* regexp, void* sear
 	free(All);
 }
 
-
 void listFilesInDirectory(char path[], WIN32_FIND_DATA entries[]) {
 
 	WIN32_FIND_DATA data;
@@ -1284,3 +1349,4 @@ BOOL print(char* str)	{
 		NULL
 	);
 }
+
