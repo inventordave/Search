@@ -22,7 +22,9 @@ char invalid = '\0';
 char regExp = 0;
 char outputFile[261] = { '\0' };
 
+int fc_type;
 
+char* msg_str;
 char* filename;
 char* search_string;
 char* defaultWhiteList;

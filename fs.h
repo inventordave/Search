@@ -50,7 +50,8 @@ extern char regExp;
 #define FS_FC_STRING 2
 #endif
 
-
+void* search_pattern;
+void* search_input;
 
 extern int fc_type;
 

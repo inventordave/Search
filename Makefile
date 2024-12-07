@@ -5,7 +5,7 @@ warnings=-Wall -Wextra
 optimize=-O3
 debug=-g -DDEBUG
 target=-mconsole -D_WIN32_
-libs=-lole32 -loleaut32
+libs=-llibole32.a -lliboleaut32.a
 noexe=-c
 
 OUTPUT=-o fs.exe
@@ -15,12 +15,12 @@ OUTPUT=-o fs.exe
 
 
 filesearch:  stringy colour error regex fs gcollect davelib
-	  $(compiler) $(optimise) $(warnings) $(debug) $(target) \
+	  $(compiler) $(optimise) $(warnings) $(debug) $(libs) $(target) \
 	  colour.o stringy.o fs.o error.o ../wernee/regex_w/regexd.o ../davelib/io.o ../gcollect/gcd.o \
 	  $(OUTPUT)
 
 fs: fs.c fs.h ../colour/colour.h
-	$(compiler) $(optimise) $(warnings) $(debug) $(target) $(noexe) -o fs.o		fs.c 
+	$(compiler) $(optimise) $(warnings) $(debug) $(target) $(libs) $(noexe) -o fs.o		fs.c 
 
 stringy: ../stringy/stringy.c ../stringy/stringy.h
 	$(compiler) $(optimise) $(warnings) $(debug) $(noexe) -o stringy.o			../stringy/stringy.c
