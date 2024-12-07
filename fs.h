@@ -21,13 +21,16 @@ char* whiteList;
 
 extern char* defaultIgnoreList;
 extern char* defaultWhiteList;
-#define MAX_DEFAULT_ENTRIES
+#define MAX_DEFAULT_ENTRIES 128
 #define DIL_ENTRIES MAX_DEFAULT_ENTRIES
 #define DWL_ENTRIES MAX_DEFAULT_ENTRIES
 
+extern void rotate(int * argc, char * argv[]);
 
 extern char* filename;
 extern char* search_string;
+void rotate(int * argc, char * argv[]);
+
 
 extern char* msg_str;
 extern char* s;
@@ -36,8 +39,8 @@ extern char* os;
 extern int e;
 extern int ep;
 
-extern char invalid = '\0';
-extern char regExp = 0;
+extern char invalid;
+extern char regExp;
 
 #ifndef FS_FC_PATTERN
 #define FS_FC_PATTERN 1
@@ -51,9 +54,9 @@ extern char regExp = 0;
 
 extern int fc_type;
 
-extern BOOL color;
+extern BOOL colour;
 
-extern char outputFile[261] = { '\0' };
+extern char outputFile[261];
 extern char* search_string;
 extern void* search_input;
 extern void* search_pattern;
@@ -92,24 +95,7 @@ typedef struct resultRecord	{
 
 } resultRecord;
 
-
-// ENUM for getOptions()
-enum	{
-	
-	OK,
-	TOO_LONG,
-	NO_INPUT,
-	
-	SUCCESS_,
-	ERROR_,
-	
-	QUIT
-	
-} status;
-// ---------------------
-
-
-#include "regex/wregex.h"
+#include "../wernee/regex_w/wregex.h"
 extern wregmatch_t* subm_g;
 extern wregex_t* r_g;
 
@@ -121,8 +107,6 @@ extern char cmpPatterns( wregex_t*, char* ); // return 1 if the 2 input filename
 
 extern void search( char*, char* [], int*, wregex_t*, void*, int );
 extern signed int searchfile( char*, void*, int );
-
-
 
 #endif
 

@@ -6,17 +6,42 @@
 #include <stdio.h>
 #include <shellapi.h>
 #include <winnt.h>
+#include <math.h>
+#include <assert.h>
 
 #include "../stringy/stringy.h"
 #include "../colour/colour.h"
 #include "../gcollect/gc.h"
-
-#include "wernee/wregex.h"
-#include "wernee/wrx_prnt.h"
+#include "../wernee/regex_w/wregex.h"
+#include "../wernee/regex_w/wrx_prnt.h"
 
 #include "error.h"
 #include "fs.h"
 
+char invalid = '\0';
+char regExp = 0;
+char outputFile[261] = { '\0' };
+
+
+char* filename;
+char* search_string;
+char* defaultWhiteList;
+char* defaultIgnoreList;
+char* os;
+char* s;
+
+void rotate(int * argc, char * argv[])	{
+
+	assert( *argc >= 0 );
+	
+	for(int i = 0; i < (*argc - 1); i++)	{
+		
+		argv[i] = argv[i+1];
+	}
+
+	argv[*argc - 1] = '\0';
+	*argc -= 1;
+}
 static void init( void );
 static void finally( void );
 
@@ -25,17 +50,11 @@ wregex_t* r_g;
 
 // WS_FS_C
 
-#include <stdlib.h>
-#include <stdio.h>
-#include <math.h>
-#include "../stringy/stringy.h"
-#include "regex/wregex.h"
-
 static int _match( wregex_t *p, const char *s, const char *file, int line );
 #define match(p, s)   _match(p, s, __FILE__, __LINE__)
 #define regex( s,p ) match(p, s)
 
-static int e, ep;
+int e, ep;
 
 signed int searchfile( char* _, void* pattern, int type )	{
 	
@@ -91,10 +110,9 @@ static int _match( wregex_t *p, const char *s, const char *file, int line ) {
 	return e;
 }
 
-
 signed int getOptions(int * argc, char* argv[])	{
 
-	enum status rc;
+	int rc;
 	char buff[200];
 		
 	int i = 0, j = 0;
@@ -113,14 +131,14 @@ signed int getOptions(int * argc, char* argv[])	{
 		
 		rc = input( strci(FG_BRIGHT_YELLOW, strc("Please enter the cmd-line arguments to pass to 'fs': ", FG_YELLOW)), buff, 200 );
 	
-		if(rc == QUIT)	{
+		if(rc == 2)	{
 		
 			printf( "\n%sExiting Program. Dave & Heck thank you! Come again!%s", FG_BRIGHT_GREEN, NORMAL );
 			printf( " %s%shttps://www.inventordave.com/%s\n", FG_BRIGHT_WHITE, BG_BLUE, NORMAL );
 			exit(0);
 		}
 		
-		if (rc == NO_INPUT) {
+		if (rc == 0) {
 
 			printf( "\n%sNo input.%s\n", FG_BRIGHT_RED, NORMAL );
 			return -1;
@@ -136,6 +154,7 @@ signed int getOptions(int * argc, char* argv[])	{
 		//getOptions(&argc, argv2, &_free);
 		
 		argv = argv2;
+
 		
 		/* */
 		while(1)	{
@@ -197,13 +216,13 @@ signed int getOptions(int * argc, char* argv[])	{
 		
 		//printf( "Processing args...\n" );
 		
-		if(cmp(argv[0], "-r"))	{
+		if(!strcmp(argv[0], "-r"))	{
 			
 			FLAGS |= RECURSE;
 			continue;
 		}
 		
-		if(cmp(argv[0], "-o"))	{
+		if(!strcmp(argv[0], "-o"))	{
 
 			strcpy(outputFile, argv[1]);
 			FLAGS |= OTF;
@@ -217,30 +236,30 @@ signed int getOptions(int * argc, char* argv[])	{
 			continue;
 		}
 		
-		if(cmp(argv[0], "-c"))	{
+		if( !strcmp(argv[0], "-c") )	{
 			
-			if(cmp(argv[1], "off") || cmp(argv[1], "0"))	{
+			if( !strcmp(argv[1], "off") || !strcmp(argv[1], "0") )	{
 				
-				resetAnsiVtCodes(0);
+				ResetAnsiVtCodes(0);
 				printf( "Colour output DISABLED.\n" );
-				color = 0;
+				colour = 0;
 				rotate( argc, argv );
 			}
 			else	{
 
-				resetAnsiVtCodes(1);
+				ResetAnsiVtCodes(1);
 				
 				sprintf(msg_str, "%s%s%s\n", FG_BRIGHT_GREEN, "Colour output ENABLED.", NORMAL );
 				printf( msg_str );
 				
-				if(cmp(argv[1], "on") || cmp(argv[1], "1"))
+				if( !strcmp(argv[1], "on") || !strcmp(argv[1], "1"))
 					rotate( argc, argv );
 			}	
 			
 			continue;
 		}
 		
-		if( cmp(argv[0], "-dir")||cmp(argv[0], "-d") )	{
+		if( !strcmp(argv[0], "-dir")||!strcmp(argv[0], "-d") )	{
 			
 			if(argv[1][0]!='-')	{ // next arg is directory name to find (but can do -f filename to set the dirname.
 			
@@ -252,7 +271,7 @@ signed int getOptions(int * argc, char* argv[])	{
 			continue;
 		}
 		
-		if( cmp(argv[0], "-filecontentsregex") || cmp(argv[0], "-fcregex") )	{
+		if( !strcmp(argv[0], "-filecontentsregex") || !strcmp(argv[0], "-fcregex") )	{
 			
 			FLAGS |= FILE_CONTENTS;
 		
@@ -268,7 +287,7 @@ signed int getOptions(int * argc, char* argv[])	{
 			continue;
 		}
 			
-		if( cmp(argv[0], "-filecontents") || cmp(argv[0], "-fc") )	{
+		if( !strcmp(argv[0], "-filecontents") || !strcmp(argv[0], "-fc") )	{
 			
 			//strcpy( search_input, argv[1] );
 			
@@ -284,25 +303,25 @@ signed int getOptions(int * argc, char* argv[])	{
 			continue;
 		}
 		
-		if( cmp(argv[0], "-regexp") || cmp(argv[0], "-re") )	{
+		if( !strcmp(argv[0], "-regexp") || !strcmp(argv[0], "-re") )	{
 			
 			regExp = 1;
 			continue;
 		}
 		
-		if(cmp( argv[0], "-html" ))	{
+		if( !strcmp( argv[0], "-html" ))	{
 			
 			FLAGS |= HTML;
 			continue;
 		}
 		
-		if(cmp( argv[0], "-ci" ))	{
+		if( !strcmp( argv[0], "-ci" ))	{
 			
 			FLAGS |= CASE_INSENSITIVE;
 			continue;
 		}
 		
-		if(cmp( argv[0], "-i") )	{
+		if( !strcmp( argv[0], "-i") )	{
 			
 			if( argv[1][0] == '-' )	{
 				
@@ -318,7 +337,7 @@ signed int getOptions(int * argc, char* argv[])	{
 			continue;
 		}
 		
-		if(cmp(argv[0], "+i"))	{
+		if(!strcmp(argv[0], "+i"))	{
 			
 			if( (argv[1][0] == '-') || (argv[1][0] == '+') )	{
 				
@@ -334,7 +353,7 @@ signed int getOptions(int * argc, char* argv[])	{
 			continue;
 		}
 		
-		if( cmp(argv[0], "-f") || cmp(argv[0], "-filename") )	{ // optional switch, can just pass filename pattern as a stand-alone arg.
+		if( !strcmp(argv[0], "-f") || !strcmp(argv[0], "-filename") )	{ // optional switch, can just pass filename pattern as a stand-alone arg.
 
 			FLAGS |= FILENAME;
 			
@@ -348,13 +367,13 @@ signed int getOptions(int * argc, char* argv[])	{
 		}
 		
 			
-		if( cmp(filename, "%") )	{
+		if( !strcmp(filename, "%") )	{
 			
 			strcpy( filename, argv[0] );
 			continue;
 		}
 		
-		if( cmp(search_string, "%") )	{
+		if( !strcmp(search_string, "%") )	{
 			
 			strcpy( search_string,argv[0] );
 			continue;
@@ -384,9 +403,9 @@ signed int getOptions(int * argc, char* argv[])	{
 			search_input = (void*) search_string;	
 	}
 	
-	if(cmp( filename, "%" ))
+	if(!strcmp( filename, "%" ))
 		strcpy( filename, "*" );
-	if( cmp( search_string,"%" ) )
+	if( !strcmp( search_string,"%" ) )
 		strcpy( search_string, "*" );
 
 	char* fn = filename;
@@ -443,6 +462,7 @@ signed int getOptions(int * argc, char* argv[])	{
 	return 1;
 }
 
+BOOL colour;
 int main(int argc, char*argv[], char**envp)	{
 	
 	init();
@@ -456,7 +476,7 @@ int main(int argc, char*argv[], char**envp)	{
 		ansivt = 'C';
 
 	if( ansivt )
-		color = colorMode();
+		colour = colorMode();
 
 	if( FLAGS&FILE_CONTENTS )	{
 		
@@ -475,17 +495,17 @@ int main(int argc, char*argv[], char**envp)	{
 	strcpy( defaultIgnoreList, ".git" ); /** ".git|.vscode|node_modules" */
 	strcpy( defaultWhiteList, "\0" ); /** "src|x64|test|node_modules|debug|release|htdocs" */
 	
-	if( _BYPASS_ANSIVT == 1 ) {
+	if( BYPASS_ANSIVT_GUARD == 1 ) {
 		
 		print( "ANSI/VT Colour mode for fileSearch (fs) has been bypassed at build time.\nFor colour support, please restart 'fs' using cmd-line switch \"-c\", or recompile changing '_BYPASS_ANSIVT' at the top of 'fs.c' to any value but 1.\n\n" );
-		resetAnsiVtCodes(0);
+		ResetAnsiVtCodes(0);
 	}
-	else if( color==0 )	{
+	else if( colour==0 )	{
 		
 		printf( "ANSI/VT Color mode is not available.\n" );
 	}
 	else
-		resetAnsiVtCodes(1), printf( "%sANSI/VT %smode has been activated.%s\n", FG_BRIGHT_YELLOW, FG_GREEN, NORMAL );
+		ResetAnsiVtCodes(1), printf( "%sANSI/VT %smode has been activated.%s\n", FG_BRIGHT_YELLOW, FG_GREEN, NORMAL );
 	
 	printf( "Filename/Pattern: '%s'\n", filename );
 	
@@ -629,7 +649,7 @@ int main(int argc, char*argv[], char**envp)	{
 			
 		*/
 		
-		enum status rc;
+		signed rc;
 		char buff[10];
 		char quit = 0;
 		
@@ -637,7 +657,7 @@ int main(int argc, char*argv[], char**envp)	{
 			
 			rc = input( strci("To Open a File, enter it's number here, enter 0 for a new search,\nor type 'quit' or 'q' to exit the program: ", FG_BRIGHT_CYAN), buff, 10 );
 			
-			if( rc == QUIT )	{
+			if( rc == +2 )	{
 			
 				printf( "\n%sExiting Program. Dave thanks you! Come again!%s\n", FG_BRIGHT_GREEN, NORMAL );
 				printf( "%shttps://github.com/%sinventordave2%s\n", FG_BRIGHT_WHITE, FG_BRIGHT_BLUE, NORMAL );
@@ -645,13 +665,13 @@ int main(int argc, char*argv[], char**envp)	{
 				break;
 			}
 			
-			if ( rc == NO_INPUT ) {
+			if ( rc == 0 ) {
 
 				printf( "\n%sNo input.%s\n", FG_BRIGHT_RED, NORMAL );
 				continue;
 			}
 
-			if ( rc == TOO_LONG ) {
+			if ( rc == -1 ) {
 				
 				printf( "\n%sInput number too long.%s\n", FG_BRIGHT_RED, NORMAL );
 				continue;
@@ -845,7 +865,6 @@ int main(int argc, char*argv[], char**envp)	{
 	//finally();
 	return 0;
 }
-
 // CONSTRUCTION & DESTRUCTION
 void init(void)	{
 
@@ -857,16 +876,16 @@ void init(void)	{
 	search_string = (char*)malloc( MAX_FILE_PATH_LENGTH * sizeof(char));
 	search_string[0] = '\0';
 
-	ignoreList = (char*)malloc( (MAX_FILE_PATH_LENGTH * sizeof(char)) * IL_ENTRIES );
+	ignoreList = (char*)malloc( MAX_FILE_PATH_LENGTH * sizeof(char) * DIL_ENTRIES );
 	ignoreList[0] = '\0';	
 
-	whiteList = (char*)malloc( (MAX_FILE_PATH_LENGTH * sizeof(char)) * WL_ENTRIES );
+	whiteList = (char*)malloc( MAX_FILE_PATH_LENGTH * sizeof(char) * DWL_ENTRIES );
 	whiteList[0] = '\0';
 
-	defaultIgnoreList = (char*)malloc( (MAX_FILE_PATH_LENGTH * sizeof(char)) * DIL_ENTRIES );
+	defaultIgnoreList = (char*)malloc( MAX_FILE_PATH_LENGTH * sizeof(char) * DIL_ENTRIES );
 	defaultIgnoreList[0] = '\0';	
 
-	defaultWhiteList = (char*)malloc( (MAX_FILE_PATH_LENGTH * sizeof(char)) * DWL_ENTRIES );
+	defaultWhiteList = (char*)malloc( MAX_FILE_PATH_LENGTH * sizeof(char) * DWL_ENTRIES );
 	defaultWhiteList[0] = '\0';
 
 	s = (char*)malloc(MAX_FILE_PATH_LENGTH * sizeof(char));
@@ -893,8 +912,6 @@ void finally(void)	{
 	if( FLAGS&OTF )
 		fclose( f );
 }
-
-
 // outputs found item to screen, and optionally, to an output file.
 void output( char* path, char* filename, int o )	{	
 
@@ -922,7 +939,6 @@ void output( char* path, char* filename, int o )	{
 	
 	//free(s); free(os); // see: finally()
 }
-
 #define CHUNK 1024
 static int readfile( FILE* fp, char* buf )	{
 
@@ -954,7 +970,6 @@ static int readfile( FILE* fp, char* buf )	{
 	buf = b;
 	return r;
 }
-
 void search( char* path, char* ResultObj[], int* o, wregex_t* regexp, void* search_pattern, int fc_type ) {
 
 	WIN32_FIND_DATA* files = (WIN32_FIND_DATA*)calloc(MAX_NUM_FILES, sizeof(WIN32_FIND_DATA));;
@@ -973,7 +988,7 @@ void search( char* path, char* ResultObj[], int* o, wregex_t* regexp, void* sear
 	if( !(FLAGS&DIR) )
 		for (unsigned i=0; i < MAX_NUM_FILES; i++ )	{
 			
-			if (cmp( files[i].cFileName, "" ))
+			if (!strcmp( files[i].cFileName, "" ))
 				break;
 
 			char ignoreFile = 0;
@@ -1004,7 +1019,7 @@ void search( char* path, char* ResultObj[], int* o, wregex_t* regexp, void* sear
 						++h;
 					}
 					
-					if(cmp( files[i].cFileName, temp ))	{
+					if(!strcmp( files[i].cFileName, temp ))	{
 
 						printf( "Detected a File on the block list ('%s'). Ignoring.\n", files[i].cFileName );						
 						ignoreFile = 1;
@@ -1078,7 +1093,7 @@ void search( char* path, char* ResultObj[], int* o, wregex_t* regexp, void* sear
 	else
 		for (unsigned i=0; i < MAX_NUM_FOLDERS; i++ )	{
 			
-			if ( cmp(dirs[i].cFileName, "" ))
+			if ( !strcmp(dirs[i].cFileName, "" ))
 				break;
 
 			char ignoreDir = 0;
@@ -1109,7 +1124,7 @@ void search( char* path, char* ResultObj[], int* o, wregex_t* regexp, void* sear
 						++h;
 					}
 					
-					if(cmp( dirs[i].cFileName, temp ))	{
+					if(!strcmp( dirs[i].cFileName, temp ))	{
 
 						printf( "Detected a Dir on the block list ('%s'). Ignoring.\n", dirs[i].cFileName );						
 						ignoreDir = 1;
@@ -1127,7 +1142,7 @@ void search( char* path, char* ResultObj[], int* o, wregex_t* regexp, void* sear
 			if( ignoreDir == 1 )
 				continue;
 			
-			if ( cmpPatterns(regexp, dirs[i].cFileName) && !(cmp(dirs[i].cFileName, cd) || cmp(dirs[i].cFileName, bd)) )	{ // Match Found.
+			if ( cmpPatterns(regexp, dirs[i].cFileName) && !(!strcmp(dirs[i].cFileName, cd) || !strcmp(dirs[i].cFileName, bd)) )	{ // Match Found.
 
 				output( path, dirs[i].cFileName, (*o) + 1) ;
 			
@@ -1162,11 +1177,11 @@ void search( char* path, char* ResultObj[], int* o, wregex_t* regexp, void* sear
 
 			char ignoreDir = 0;
 			
-			if ( cmp(dirs[i].cFileName, "") )
+			if ( !strcmp(dirs[i].cFileName, "") )
 				break;
 
 			// REMEMBER: DON'T RECURSIVELY SEARCH . OR .. !!!!!
-			if (!cmp(dirs[i].cFileName, cd) && !cmp(dirs[i].cFileName, bd)) {
+			if (!!strcmp(dirs[i].cFileName, cd) && !!strcmp(dirs[i].cFileName, bd)) {
 
 				{	// Checks to see if we should skip the current Dir, based on a list provided by the user on the cmd=line, via the "-i" switch.				
 
@@ -1195,7 +1210,7 @@ void search( char* path, char* ResultObj[], int* o, wregex_t* regexp, void* sear
 							++h;
 						}
 						
-						if(cmp( dirs[i].cFileName, temp ))	{
+						if(!strcmp( dirs[i].cFileName, temp ))	{
 							
 							printf( "Detected a Dir on the block list ('%s'). Ignoring.\n", dirs[i].cFileName );
 							
@@ -1250,7 +1265,6 @@ void search( char* path, char* ResultObj[], int* o, wregex_t* regexp, void* sear
 	free(files);
 	free(All);
 }
-
 void listFilesInDirectory(char path[], WIN32_FIND_DATA entries[]) {
 
 	WIN32_FIND_DATA data;
@@ -1282,13 +1296,12 @@ void listFilesInDirectory(char path[], WIN32_FIND_DATA entries[]) {
 	
 	return;
 }
-
 void seperateFilesFromFolders(WIN32_FIND_DATA entries[], WIN32_FIND_DATA files[], WIN32_FIND_DATA dirs[], char* pathname) {
 
 	int i = 0;
 	int di2 = 0;
 	int fi2 = 0;
-	while (!cmp(entries[i].cFileName, "")) {
+	while (!!strcmp(entries[i].cFileName, "")) {
 
 		if (entries[i].dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)	{
 
@@ -1320,7 +1333,6 @@ void seperateFilesFromFolders(WIN32_FIND_DATA entries[], WIN32_FIND_DATA files[]
 	if (di2 >= (MAX_NUM_FOLDERS-1))
 		; //printf("Folder count for %s is %d.\n", pathname, di2-1);
 }
-
 char cmpPatterns(wregex_t * regexp, char* pattern2)	{
 
 	wregmatch_t* dummy = (wregmatch_t*)calloc( 1,sizeof(wregmatch_t) );
@@ -1338,6 +1350,7 @@ char cmpPatterns(wregex_t * regexp, char* pattern2)	{
 	return 1;
 }
 
+#ifdef _WIN32_
 BOOL print(char* str)	{
 	
 	return
@@ -1349,4 +1362,5 @@ BOOL print(char* str)	{
 		NULL
 	);
 }
+#endif
 
